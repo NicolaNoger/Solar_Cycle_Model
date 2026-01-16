@@ -1,0 +1,5 @@
+Method,Iterations,Total Time (s),Time/Iteration (ms),MSE,Speedup vs Baseline
+Baseline (Pure Python),100,21.7503,217.5027,2439.7210,1.0000
+NumPy Vectorized,100,0.6896,6.8960,2459.2173,31.5406
+NumPy Pre-allocation,100,0.6319,6.3195,2382.2685,34.4177
+Numba JIT,100,0.4976,4.9756,2527.5952,43.7139

@@ -96,8 +96,10 @@ def run_parallel_calibration(t_real, y_real, num_runs, iterations, num_cores,
 def analyze_ts_td_correlation(final_params):
     """
     Analyze linear correlation between Ts and Td.
-    Td_k = s1 * Ts_k + s2
-    Expected from Penza et al. 2024: s1 ≈ 0.02 ± 0.01 year
+    Td_k = s1 * Ts_k + s2 (Equation 4, Penza et al. 2024)
+    Expected from literature: s1 ≈ 0.02 ± 0.01 year
+    
+    Note: The slope is dimensionless since both Ts and Td are in the same units.
     """
     n_cycles = len(final_params) // 3
     
@@ -117,13 +119,18 @@ def analyze_ts_td_correlation(final_params):
     Td_arr = np.array(Td_values)
     T0_arr = np.array(T0_values)
     
-    # Linear regression: Td = s1 * Ts + s2
-    slope, intercept, r_value, p_value, std_err = stats.linregress(Ts_arr, Td_arr)
+    # Linear fit using np.polyfit 
+    slope, intercept = np.polyfit(Ts_arr, Td_arr, 1)
+    td_fit = slope * Ts_arr + intercept
+    
+    # Get statistics with scipy for p-value and R²
+    _, _, r_value, p_value, std_err = stats.linregress(Ts_arr, Td_arr)
     
     return {
         'T0': T0_arr,
         'Ts': Ts_arr,
         'Td': Td_arr,
+        'td_fit': td_fit,
         'slope': slope,
         'intercept': intercept,
         'r_value': r_value,
@@ -412,7 +419,8 @@ def main():
     
     # Figure 3: Ts vs Td correlation
     fig3, ax4 = plt.subplots(figsize=(10, 8))
-    ax4.scatter(corr['Ts'], corr['Td'], s=150, c='blue', alpha=0.7, edgecolors='black')
+    ax4.scatter(corr['Ts'], corr['Td'], s=150, c='blue', alpha=0.7, edgecolors='black', 
+                label='Fitted Parameters')
     
     # Add cycle labels
     for k in range(len(corr['Ts'])):
@@ -420,12 +428,12 @@ def main():
                     (corr['Ts'][k], corr['Td'][k]),
                     textcoords="offset points", xytext=(8, 5), fontsize=10)
     
-    # Fit line
+    # Fit line using td_fit from np.polyfit
     x_fit = np.linspace(min(corr['Ts'])*0.9, max(corr['Ts'])*1.1, 100)
     y_fit = corr['slope'] * x_fit + corr['intercept']
     ax4.plot(x_fit, y_fit, 'r-', linewidth=2, 
-             label=f'Linear Fit: Td = {corr["slope"]:.4f}*Ts + {corr["intercept"]:.4f}\n'
-                   f'r = {corr["r_value"]:.3f}, R^2 = {corr["r_squared"]:.3f}')
+             label=f'np.polyfit: Td = {corr["slope"]:.4f}*Ts + {corr["intercept"]:.4f}\n'
+                   f'R² = {corr["r_squared"]:.3f}, p = {corr["p_value"]:.4f}')
     
     ax4.set_xlabel('Ts (Rise Parameter) [years]', fontsize=12)
     ax4.set_ylabel('Td (Decay Parameter) [years]', fontsize=12)
